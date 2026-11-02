@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Admin Panel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root{--bg:#f2dfc9;--card:#fff;--accent:#542c15}
+body{
+  margin:0;min-height:100vh;display:flex;
+  align-items:center;justify-content:center;
+  background:var(--bg);font-family:Arial
+}
+.container{
+  width:950px;background:#fff;padding:24px;
+  border-radius:14px;box-shadow:0 8px 25px rgba(0,0,0,.15)
+}
+h2{text-align:center;color:var(--accent)}
+input{
+  padding:6px;border-radius:6px;border:1px solid #bbb;width:100%
+}
+.btn{
+  padding:6px 12px;border:none;border-radius:6px;
+  background:var(--accent);color:#fff;cursor:pointer
+}
+.del{background:#b22222}
+table{
+  width:100%;border-collapse:collapse;margin-top:12px;font-size:13px
+}
+th,td{border:1px solid #ccc;padding:6px}
+th{background:#f0e6dc}
+.status{margin-top:8px;font-weight:bold}
+.ok{color:green}
+.err{color:red}
+.actions{display:flex;gap:6px}
+</style>
+</head>
+
+<body>
+<div class="container">
+<h2>Admin Panel</h2>
+
+<!-- LOGIN -->
+<div id="loginBox">
+  <input id="u" placeholder="admin"><br><br>
+  <input id="p" type="password" placeholder="admin123"><br>
+  <button class="btn" onclick="login()">Login</button>
+  <div id="loginStatus" class="status"></div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dash" style="display:none">
+  <button class="btn del" onclick="logout()">Logout</button>
+  <div id="dashStatus" class="status"></div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th><th>Roll</th><th>Name</th><th>Email</th>
+        <th>Phone</th><th>Branch</th><th>Year</th><th>Section</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="body"></tbody>
+  </table>
+</div>
+</div>
+
+<script>
+const LIST_URL   = "http://localhost:8080/listStudents";
+const UPDATE_URL = "http://localhost:8080/updateStudent";
+const DELETE_URL = "http://localhost:8080/deleteStudent"; // add backend if not yet
+
+const ADMIN="admin", PASS="admin123";
+let allStudents=[];
+
+function login(){
+  if(u.value===ADMIN && p.value===PASS){
+    loginBox.style.display="none";
+    dash.style.display="block";
+    loadStudents();
+  }else{
+    loginStatus.textContent="Invalid credentials";
+    loginStatus.className="status err";
+  }
+}
+
+function logout(){
+  dash.style.display="none";
+  loginBox.style.display="block";
+}
+
+async function loadStudents(){
+  try{
+    const res = await fetch(LIST_URL);
+    const data = await res.json();
+    allStudents = data;
+    renderTable(data);
+    dashStatus.textContent="Loaded successfully";
+    dashStatus.className="status ok";
+  }catch{
+    dashStatus.textContent="Server / JSON error";
+    dashStatus.className="status err";
+  }
+}
+
+function renderTable(list){
+  body.innerHTML="";
+  list.forEach(s=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+<td>${s.id}</td>
+<td><input value="${s.roll_no}" disabled></td>
+<td><input value="${s.name}"></td>
+<td><input value="${s.email||""}"></td>
+<td><input value="${s.phone||""}"></td>
+<td><input value="${s.branch||""}"></td>
+<td><input value="${s.year}"></td>
+<td><input value="${s.section||""}"></td>
+<td class="actions">
+  <button class="btn" onclick="updateStudent(${s.id},this)">Update</button>
+  <button class="btn del" onclick="deleteStudent(${s.id})">Delete</button>
+</td>`;
+    body.appendChild(tr);
+  });
+}
+
+async function updateStudent(id,btn){
+  const inputs = btn.closest("tr").querySelectorAll("input");
+
+  const p = new URLSearchParams({
+    id:id,
+    roll_no:inputs[0].value,
+    name:inputs[1].value,
+    email:inputs[2].value,
+    phone:inputs[3].value,
+    branch:inputs[4].value,
+    year:inputs[5].value,
+    section:inputs[6].value
+  });
+
+  await fetch(UPDATE_URL,{
+    method:"POST",
+    headers:{"Content-Type":"application/x-www-form-urlencoded"},
+    body:p.toString()
+  });
+
+  alert("Student updated");
+}
+
+async function deleteStudent(id){
+  if(!confirm("Delete this student?")) return;
+  await fetch(DELETE_URL,{
+    method:"POST",
+    headers:{"Content-Type":"application/x-www-form-urlencoded"},
+    body:"id="+id
+  });
+  loadStudents();
+}
+</script>
+</body>
+</html>
